@@ -1,0 +1,2847 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Ativos TI</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        .sidebar {
+            width: 250px;
+            background: #1f2937;
+            color: white;
+            min-height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .main-content {
+            margin-left: 250px;
+            min-height: 100vh;
+            background: #f3f4f6;
+        }
+        
+        .page {
+            display: none;
+        }
+        
+        .page.active {
+            display: block;
+        }
+        
+        .nav-item {
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            color: #d1d5db;
+            text-decoration: none;
+            transition: all 0.3s;
+            border-left: 4px solid transparent;
+        }
+        
+        .nav-item:hover,
+        .nav-item.active {
+            background: #374151;
+            color: white;
+            border-left-color: #3b82f6;
+        }
+        
+        .nav-item i {
+            margin-right: 10px;
+            width: 20px;
+        }
+        
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .status-available {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .status-assigned {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .status-maintenance {
+            background: #fed7aa;
+            color: #c2410c;
+        }
+        
+        .status-retired {
+            background: #fecaca;
+            color: #dc2626;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+        }
+        
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 24px;
+            border-radius: 8px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+        
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+        
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 500;
+            color: #374151;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card h3 {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 8px;
+        }
+        
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #1f2937;
+        }
+        
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .dropzone {
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            background: #f9fafb;
+            transition: all 0.3s;
+        }
+        
+        .dropzone:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+        
+        .dropzone.dragover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+            
+            .sidebar.mobile-open {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .mobile-menu-btn {
+                display: block;
+                position: fixed;
+                top: 20px;
+                left: 20px;
+                z-index: 1001;
+                background: #3b82f6;
+                color: white;
+                border: none;
+                padding: 10px;
+                border-radius: 6px;
+                cursor: pointer;
+            }
+        }
+        
+        .mobile-menu-btn {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <button class="mobile-menu-btn" onclick="toggleSidebar()">
+        <i class="fas fa-bars"></i>
+    </button>
+    
+    <div class="sidebar" id="sidebar">
+        <div style="padding: 20px; border-bottom: 1px solid #374151;">
+            <h1 style="font-size: 18px; font-weight: bold; display: flex; align-items: center;">
+                <i class="fas fa-laptop" style="margin-right: 8px; color: #3b82f6;"></i>
+                Controle de Ativos TI
+            </h1>
+        </div>
+        
+        <nav style="padding: 20px 0;">
+            <a href="#" class="nav-item active" onclick="showPage('dashboard')">
+                <i class="fas fa-chart-bar"></i>
+                Dashboard
+            </a>
+            <a href="#" class="nav-item" onclick="showPage('equipment')">
+                <i class="fas fa-desktop"></i>
+                Equipamentos
+            </a>
+            <a href="#" class="nav-item" onclick="showPage('movements')">
+                <i class="fas fa-exchange-alt"></i>
+                Movimentações
+            </a>
+            <a href="#" class="nav-item" onclick="showPage('import')">
+                <i class="fas fa-upload"></i>
+                Importar Dados
+            </a>
+            <a href="#" class="nav-item" onclick="showPage('reports')">
+                <i class="fas fa-file-alt"></i>
+                Relatórios
+            </a>
+        </nav>
+    </div>
+    
+    <div class="main-content">
+        <!-- Dashboard Page -->
+        <div id="dashboard" class="page active" style="padding: 30px;">
+            <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #1f2937;">Dashboard</h2>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total de Equipamentos</h3>
+                    <div class="value" id="totalEquipment">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Disponíveis</h3>
+                    <div class="value" id="availableEquipment">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Em Uso</h3>
+                    <div class="value" id="assignedEquipment">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Manutenção</h3>
+                    <div class="value" id="maintenanceEquipment">0</div>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="chart-container">
+                    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px;">Equipamentos por Status</h3>
+                    <canvas id="statusChart" width="400" height="200"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px;">Equipamentos por Categoria</h3>
+                    <canvas id="categoryChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Equipment Page -->
+        <div id="equipment" class="page" style="padding: 30px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="font-size: 24px; font-weight: bold; color: #1f2937;">Equipamentos</h2>
+                <button class="btn btn-primary" onclick="openModal('equipmentModal')">
+                    <i class="fas fa-plus" style="margin-right: 8px;"></i>
+                    Adicionar Equipamento
+                </button>
+            </div>
+            
+            <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                    <div class="form-group">
+                        <label>Categoria</label>
+                        <select id="categoryFilter" onchange="filterEquipment()">
+                            <option value="">Todas as categorias</option>
+                            <option value="notebook">Notebooks</option>
+                            <option value="desktop">Desktops</option>
+                            <option value="monitor">Monitores</option>
+                            <option value="mobile">Celulares</option>
+                            <option value="other">Outros</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select id="statusFilter" onchange="filterEquipment()">
+                            <option value="">Todos os status</option>
+                            <option value="available">Disponível</option>
+                            <option value="assigned">Atribuído</option>
+                            <option value="maintenance">Manutenção</option>
+                            <option value="retired">Aposentado</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Local</label>
+                        <select id="locationFilter" onchange="filterEquipment()">
+                            <option value="">Todos os locais</option>
+                            <option value="Matriz">Matriz</option>
+                            <option value="Faz. NSA">Faz. NSA</option>
+                            <option value="Cotton">Cotton</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Buscar</label>
+                        <input type="text" id="searchFilter" placeholder="ID, Nome, Serial..." onkeyup="filterEquipment()">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="table-container">
+                <table id="equipmentTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Equipamento</th>
+                            <th>Modelo</th>
+                            <th>Serial</th>
+                            <th>Status</th>
+                            <th>Local</th>
+                            <th>Responsável</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="equipmentTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Movements Page -->
+        <div id="movements" class="page" style="padding: 30px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="font-size: 24px; font-weight: bold; color: #1f2937;">Movimentações</h2>
+                <button class="btn btn-primary" onclick="openModal('movementModal')">
+                    <i class="fas fa-plus" style="margin-right: 8px;"></i>
+                    Nova Movimentação
+                </button>
+            </div>
+            
+            <div class="table-container">
+                <table id="movementTable">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Equipamento</th>
+                            <th>Tipo</th>
+                            <th>De</th>
+                            <th>Para</th>
+                            <th>Responsável</th>
+                            <th>Observações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="movementTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Import Page -->
+        <div id="import" class="page" style="padding: 30px;">
+            <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #1f2937;">Importar Dados</h2>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">Upload de Arquivo</h3>
+                    
+                    <div class="dropzone" id="dropzone" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                        <i class="fas fa-cloud-upload-alt" style="font-size: 48px; color: #6b7280; margin-bottom: 16px;"></i>
+                        <p style="margin-bottom: 16px; color: #6b7280;">Arraste e solte seu arquivo aqui ou</p>
+                        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display: none;" onchange="handleFileSelect(event)">
+                        <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                            Selecionar Arquivo
+                        </button>
+                        <p style="margin-top: 8px; font-size: 12px; color: #6b7280;">Suporte para .xlsx, .xls e .csv</p>
+                    </div>
+                    
+                    <div id="fileInfo" style="margin-top: 16px; display: none; padding: 12px; background: #f3f4f6; border-radius: 6px;">
+                        <div style="display: flex; align-items: center;">
+                            <i class="fas fa-file-excel" style="color: #16a34a; margin-right: 8px;"></i>
+                            <div>
+                                <div id="fileName" style="font-weight: 500;"></div>
+                                <div id="fileSize" style="font-size: 12px; color: #6b7280;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" id="importBtn" style="width: 100%; margin-top: 16px;" onclick="importData()" disabled>
+                        Importar Dados
+                    </button>
+                </div>
+                
+                <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">Instruções</h3>
+                    
+                    <div style="margin-bottom: 16px;">
+                        <div style="display: flex; align-items: flex-start; margin-bottom: 12px;">
+                            <div style="background: #3b82f6; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; margin-right: 12px; flex-shrink: 0;">1</div>
+                            <div>
+                                <h4 style="font-weight: 500; margin-bottom: 4px;">Prepare seu arquivo</h4>
+                                <p style="font-size: 14px; color: #6b7280;">Certifique-se de que seu arquivo contenha as colunas necessárias.</p>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; align-items: flex-start; margin-bottom: 12px;">
+                            <div style="background: #3b82f6; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; margin-right: 12px; flex-shrink: 0;">2</div>
+                            <div>
+                                <h4 style="font-weight: 500; margin-bottom: 4px;">Faça o upload</h4>
+                                <p style="font-size: 14px; color: #6b7280;">Arraste e solte seu arquivo na área de upload.</p>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; align-items: flex-start;">
+                            <div style="background: #3b82f6; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; margin-right: 12px; flex-shrink: 0;">3</div>
+                            <div>
+                                <h4 style="font-weight: 500; margin-bottom: 4px;">Importe os dados</h4>
+                                <p style="font-size: 14px; color: #6b7280;">Clique em "Importar Dados" e aguarde o processamento.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="padding: 16px; background: #fef3c7; border-radius: 6px; border-left: 4px solid #f59e0b;">
+                        <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                            <i class="fas fa-exclamation-triangle" style="color: #f59e0b; margin-right: 8px;"></i>
+                            <h4 style="font-weight: 500; color: #92400e;">Atenção</h4>
+                        </div>
+                        <p style="font-size: 14px; color: #92400e;">O sistema está configurado para importar sua planilha específica de equipamentos automaticamente.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Reports Page -->
+        <div id="reports" class="page" style="padding: 30px;">
+            <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #1f2937;">Relatórios</h2>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px;">
+                <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3 style="font-size: 18px; font-weight: 600;">Relatório Geral</h3>
+                        <i class="fas fa-file-alt" style="font-size: 32px; color: #3b82f6;"></i>
+                    </div>
+                    <p style="color: #6b7280; margin-bottom: 16px;">Visão geral completa do inventário com estatísticas e gráficos.</p>
+                    <button class="btn btn-primary" style="width: 100%;" onclick="generateReport('general')">
+                        <i class="fas fa-download" style="margin-right: 8px;"></i>
+                        Gerar Relatório
+                    </button>
+                </div>
+                
+                <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3 style="font-size: 18px; font-weight: 600;">Por Status</h3>
+                        <i class="fas fa-chart-pie" style="font-size: 32px; color: #3b82f6;"></i>
+                    </div>
+                    <p style="color: #6b7280; margin-bottom: 16px;">Análise detalhada da distribuição por status.</p>
+                    <button class="btn btn-primary" style="width: 100%;" onclick="generateReport('status')">
+                        <i class="fas fa-download" style="margin-right: 8px;"></i>
+                        Gerar Relatório
+                    </button>
+                </div>
+                
+                <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3 style="font-size: 18px; font-weight: 600;">Movimentações</h3>
+                        <i class="fas fa-exchange-alt" style="font-size: 32px; color: #3b82f6;"></i>
+                    </div>
+                    <p style="color: #6b7280; margin-bottom: 16px;">Histórico completo de movimentações.</p>
+                    <button class="btn btn-primary" style="width: 100%;" onclick="generateReport('movements')">
+                        <i class="fas fa-download" style="margin-right: 8px;"></i>
+                        Gerar Relatório
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Equipment Modal -->
+    <div id="equipmentModal" class="modal">
+        <div class="modal-content">
+            <h3 style="font-size: 20px; font-weight: bold; margin-bottom: 20px;">Adicionar Equipamento</h3>
+            <form id="equipmentForm">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label>ID do Equipamento</label>
+                        <input type="text" id="equipmentId" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Nome</label>
+                        <input type="text" id="equipmentName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Categoria</label>
+                        <select id="equipmentCategory" required>
+                            <option value="">Selecione uma categoria</option>
+                            <option value="notebook">Notebook</option>
+                            <option value="desktop">Desktop</option>
+                            <option value="monitor">Monitor</option>
+                            <option value="mobile">Celular</option>
+                            <option value="other">Outros</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Modelo</label>
+                        <input type="text" id="equipmentModel" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Número de Série</label>
+                        <input type="text" id="equipmentSerial" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select id="equipmentStatus" required>
+                            <option value="available">Disponível</option>
+                            <option value="assigned">Atribuído</option>
+                            <option value="maintenance">Manutenção</option>
+                            <option value="retired">Aposentado</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Local</label>
+                        <input type="text" id="equipmentLocation" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Responsável</label>
+                        <input type="text" id="equipmentAssigned">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Observações</label>
+                    <textarea id="equipmentNotes" rows="3"></textarea>
+                </div>
+                <div style="display: flex; gap: 12px; margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('equipmentModal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Equipamento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Movement Modal -->
+    <div id="movementModal" class="modal">
+        <div class="modal-content">
+            <h3 style="font-size: 20px; font-weight: bold; margin-bottom: 20px;">Nova Movimentação</h3>
+            <form id="movementForm">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label>Equipamento</label>
+                        <select id="movementEquipment" required>
+                            <option value="">Selecione um equipamento</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo de Movimentação</label>
+                        <select id="movementType" required>
+                            <option value="assignment">Atribuição</option>
+                            <option value="transfer">Transferência</option>
+                            <option value="maintenance">Manutenção</option>
+                            <option value="return">Devolução</option>
+                            <option value="retirement">Baixa</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>De</label>
+                        <input type="text" id="movementFrom" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Para</label>
+                        <input type="text" id="movementTo" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Responsável</label>
+                        <input type="text" id="movementResponsible" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Observações</label>
+                    <textarea id="movementNotes" rows="3"></textarea>
+                </div>
+                <div style="display: flex; gap: 12px; margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('movementModal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Registrar Movimentação</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        // Global variables
+        let equipment = [];
+        let movements = [];
+        let selectedFile = null;
+        let editingEquipment = null;
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSampleData();
+            updateDashboard();
+            renderEquipmentTable();
+            renderMovementTable();
+            updateMovementEquipmentOptions();
+        });
+        
+        // Navigation
+        function showPage(pageId) {
+            // Hide all pages
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            // Show selected page
+            document.getElementById(pageId).classList.add('active');
+            
+            // Update navigation
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Close mobile sidebar
+            document.getElementById('sidebar').classList.remove('mobile-open');
+        }
+        
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('mobile-open');
+        }
+        
+        // Load imported equipment data
+        function loadSampleData() {
+            equipment = [
+  {
+    "id": 1,
+    "equipmentId": "EQ10001",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "VVFE42FF1X",
+    "serialNumber": "89423280I",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "FABIO PASSARI",
+    "notes": "Setor: T.I | Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U / 16GB"
+  },
+  {
+    "id": 2,
+    "equipmentId": "EQ10002",
+    "name": "MONITOR LG 23,8",
+    "category": "monitor",
+    "model": "24MK430H-B",
+    "serialNumber": "211AZRD9Q110",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "FABIO PASSARI",
+    "notes": "Setor: T.I | Acessórios: FONTE ALIMENTACAO "
+  },
+  {
+    "id": 3,
+    "equipmentId": "EQ10003",
+    "name": "NB DELL",
+    "category": "notebook",
+    "model": "VOSTRO 15 3510",
+    "serialNumber": "76HY8X3",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "GABRIELE STOKINGER",
+    "notes": "Setor: FINANCEIRO | Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I7-1165G7  / 16GB"
+  },
+  {
+    "id": 4,
+    "equipmentId": "EQ10004",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "P112FN",
+    "serialNumber": "64UUGH3",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "GABRIELE STOKINGER",
+    "notes": "Setor: FINANCEIRO | Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 5,
+    "equipmentId": "EQ10005",
+    "name": "ALL IN ONE DELL",
+    "category": "desktop",
+    "model": "W12C",
+    "serialNumber": "5DZT0L2",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "GENIFER ",
+    "notes": "Setor: FINANCEIRO | Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO"
+  },
+  {
+    "id": 6,
+    "equipmentId": "EQ10006",
+    "name": "MINI PC DELL ",
+    "category": "desktop",
+    "model": "D10V",
+    "serialNumber": "270KQX2",
+    "status": "assigned",
+    "location": "Faz. NSA",
+    "assignedTo": "MARCIELLI",
+    "notes": "Setor: ADMINSTRATIVO | Acessórios: FONTE ALIMENTAÇÃO TECLADO E MOUSE "
+  },
+  {
+    "id": 7,
+    "equipmentId": "EQ10007",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2416H",
+    "serialNumber": "S/N",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "ISABELE",
+    "notes": "Setor: FINANCEIRO | Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 8,
+    "equipmentId": "EQ10008",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "P2422HB",
+    "serialNumber": "BR-094DT7",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "ANA ",
+    "notes": "Setor: FINANCEIRO | Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 9,
+    "equipmentId": "EQ10009",
+    "name": "MINI PC DELL ",
+    "category": "desktop",
+    "model": "D14U",
+    "serialNumber": "34PY8K3",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "ANA",
+    "notes": "Setor: FINANCEIRO | Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5 10500T/ 8GB"
+  },
+  {
+    "id": 10,
+    "equipmentId": "EQ10010",
+    "name": "CELULAR MOTOROLA E22",
+    "category": "mobile",
+    "model": "PAVU0007BR",
+    "serialNumber": "UI5HVC3STR",
+    "status": "assigned",
+    "location": "Cotton",
+    "assignedTo": "KISMAR MOURA",
+    "notes": "Setor: ALGODOEIRA | Acessórios: CARREGADOR, CABO USB, CHAVE REMOÇÃO CHIP | Obs: IMEI:355165982083257/352165982083265"
+  },
+  {
+    "id": 11,
+    "equipmentId": "EQ10011",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "VJF155F11X",
+    "serialNumber": "89260021E",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "JOSUE",
+    "notes": "Setor: FISCAL | Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO"
+  },
+  {
+    "id": 12,
+    "equipmentId": "EQ10012",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "E2222HS",
+    "serialNumber": "BR-04VR43-TUB00-IBF-4E3U-A00",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "JOSUE",
+    "notes": "Setor: FISCAL | Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 13,
+    "equipmentId": "EQ10013",
+    "name": "NB DELL",
+    "category": "notebook",
+    "model": "P6EF",
+    "serialNumber": "0JWF6A00",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "LUCAS GONCALVES",
+    "notes": "Setor: FISCAL | Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I7-7500U/8GB"
+  },
+  {
+    "id": 14,
+    "equipmentId": "EQ10014",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "E2222HS",
+    "serialNumber": "BR-04VR43-TUB00-IBF-4F0U-A00",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "LUCAS GONCALVES",
+    "notes": "Setor: FISCAL | Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 15,
+    "equipmentId": "EQ10015",
+    "name": "NB DELL",
+    "category": "notebook",
+    "model": "P10015",
+    "serialNumber": "35XHYR2",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "ELCIANE",
+    "notes": "Setor: FISCAL | Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-7200U/8GB"
+  },
+  {
+    "id": 16,
+    "equipmentId": "EQ10016",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "E2222HS",
+    "serialNumber": "BR-04VR43-TUB00-IBF-OB9Z-A00",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "PATRICIA",
+    "notes": "Setor: FISCAL | Acessórios: FONTE DE ALIMENTACAO"
+  },
+  {
+    "id": 17,
+    "equipmentId": "EQ10017",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "E2222HS",
+    "serialNumber": "BR-04VR43-TUB00-IBF-25D-441Z-A02",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "RENATO",
+    "notes": "Setor: PRODUCAO | Acessórios: FONTE DE ALIMENTACAO"
+  },
+  {
+    "id": 18,
+    "equipmentId": "EQ10018",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE15",
+    "serialNumber": "87080270U",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "LUCAS",
+    "notes": "Setor: FISCAL | Acessórios: FONTE DE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-1015U-8gb"
+  },
+  {
+    "id": 19,
+    "equipmentId": "EQ10019",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "P2719H",
+    "serialNumber": "BR-OP2TRT-TUB00-1A5-40UB-AI3",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "CLEIDIANARA",
+    "notes": "Setor: FISCAL | Acessórios: FONTE DE ALIMENTACAO"
+  },
+  {
+    "id": 20,
+    "equipmentId": "EQ10020",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "894415550",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "LUCILA",
+    "notes": "Setor: FISCAL | Acessórios: FONTE DE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-1021U/8GB"
+  },
+  {
+    "id": 21,
+    "equipmentId": "EQ10021",
+    "name": "MONITOR LG 23,8",
+    "category": "monitor",
+    "model": "20MR400H-B",
+    "serialNumber": "1048PRW0F758",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "HOTUSZIEL",
+    "notes": "Setor: FISCAL | Acessórios: FONTE DE ALIMENTACAO"
+  },
+  {
+    "id": 22,
+    "equipmentId": "EQ10022",
+    "name": "NB DELL",
+    "category": "notebook",
+    "model": "INSPIRION 15",
+    "serialNumber": "3DBV9X2",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "HOTUSZIEL",
+    "notes": "Setor: FISCAL | Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-7200U/8GB"
+  },
+  {
+    "id": 23,
+    "equipmentId": "EQ10023",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89423153R",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DOUGLAS",
+    "notes": "Setor: PRODUCAO | Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-1021U/8GB"
+  },
+  {
+    "id": 24,
+    "equipmentId": "EQ10024",
+    "name": "MONITOR LG 23,8",
+    "category": "monitor",
+    "model": "24MK430H-B",
+    "serialNumber": "211AZ6F4H151",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DOUGLAS",
+    "notes": "Setor: PRODUCAO | Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 25,
+    "equipmentId": "EQ10025",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE15",
+    "serialNumber": "870803582",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "RENATA",
+    "notes": "Setor: COMERCIAL | Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I7-1051U/8GB"
+  },
+  {
+    "id": 26,
+    "equipmentId": "EQ10026",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420714",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-1021U/8GB"
+  },
+  {
+    "id": 27,
+    "equipmentId": "EQ10027",
+    "name": "GALAXY TAB A7",
+    "category": "other",
+    "model": "SM-T500",
+    "serialNumber": "R9XRA0362JT",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DOUGLAS",
+    "notes": "Setor: PRODUCAO | Acessórios: CARREGADO,CABO USB"
+  },
+  {
+    "id": 28,
+    "equipmentId": "EQ10029",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "P2422HB",
+    "serialNumber": "BR-067NW4-TU800-198-BV0L-A00",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "FERNANDO VIEIRA",
+    "notes": "Setor: PRODUCAO | Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 29,
+    "equipmentId": "EQ10030",
+    "name": "NB DELL",
+    "category": "notebook",
+    "model": "INSPIRION 15",
+    "serialNumber": "F7333T2",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "ANDREINA",
+    "notes": "Setor: PRODUCAO | Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO"
+  },
+  {
+    "id": 30,
+    "equipmentId": "EQ10031",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE22222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A00",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "JEDSON LIMA",
+    "notes": "Setor: PRODUCAO | Acessórios: FONTE ALIMENTACAO "
+  },
+  {
+    "id": 31,
+    "equipmentId": "EQ10032",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE22222H",
+    "serialNumber": "BR-0RK34N-TV800-28H-SN11-A00",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "IBERE",
+    "notes": "Setor: PRODUCAO | Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 32,
+    "equipmentId": "EQ10033",
+    "name": "NB ACER NITRO5",
+    "category": "notebook",
+    "model": "NITRO5",
+    "serialNumber": "NHQRAL0050300D3749501",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "RENATO",
+    "notes": "Setor: PRODUCAO | Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: RYZEN5 3550H/24GB"
+  },
+  {
+    "id": 33,
+    "equipmentId": "EQ10034",
+    "name": "NB LENOVO IDEAPAD GAMING3I",
+    "category": "notebook",
+    "model": "GAMINGI3",
+    "serialNumber": "PEOA1P",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "LARISSA",
+    "notes": "Setor: MARKETING | Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-11300H/8GB"
+  },
+  {
+    "id": 34,
+    "equipmentId": "EQ10036",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89423146D",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "FLAVIA",
+    "notes": "Setor: PRODUCAO | Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 35,
+    "equipmentId": "EQ10037",
+    "name": "MONITOR DELL",
+    "category": "monitor",
+    "model": "P19135B",
+    "serialNumber": "CN-07CT16-74261-332-0AUU",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "FLAVIA",
+    "notes": "Setor: PRODUCAO | Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 36,
+    "equipmentId": "EQ10038",
+    "name": "MONITOR LG",
+    "category": "monitor",
+    "model": "20MK400H-B",
+    "serialNumber": "1054PRW0C102",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "MONICA",
+    "notes": "Setor: PRODUCAO | Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 37,
+    "equipmentId": "EQ10039",
+    "name": "NB DELL",
+    "category": "notebook",
+    "model": "VOSTRO 15 3515",
+    "serialNumber": "60JTJM3",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "MONICA",
+    "notes": "Setor: PRODUCAO | Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: RYZEN 5 3450U/24GB"
+  },
+  {
+    "id": 38,
+    "equipmentId": "EQ10040",
+    "name": "TV LG 55",
+    "category": "other",
+    "model": "SSUN731C0SC",
+    "serialNumber": "011AZTN6K089",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "SALINHA REUNIAO",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 39,
+    "equipmentId": "EQ10042",
+    "name": "TV LG 75",
+    "category": "other",
+    "model": "75UK65",
+    "serialNumber": "904AZTHCD257",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "SALA REUNIAO",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 40,
+    "equipmentId": "EQ10043",
+    "name": "COMPUTADOR SALA DE REUNIÃO",
+    "category": "other",
+    "model": "Modelo não informado",
+    "serialNumber": "S/N",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "SALA REUNIAO",
+    "notes": "Acessórios: FONTE DE ALIMENTACAO"
+  },
+  {
+    "id": 41,
+    "equipmentId": "EQ10045",
+    "name": "TELEFONE GRANDSTREAM",
+    "category": "other",
+    "model": "GXP1610",
+    "serialNumber": "24ML3MN108435CB",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DAINA",
+    "notes": "Setor: RECEPCAO | Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 42,
+    "equipmentId": "EQ10046",
+    "name": "ALL IN ONE DELL",
+    "category": "desktop",
+    "model": "W12C",
+    "serialNumber": "5F0L0L2",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DAINA",
+    "notes": "Setor: RECEPCAO | Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-7200U/8GB"
+  },
+  {
+    "id": 43,
+    "equipmentId": "EQ10047",
+    "name": "CELULAR GALAXY A32",
+    "category": "mobile",
+    "model": "GALAXY A32",
+    "serialNumber": "RQ8T307N4LE",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DAINA",
+    "notes": "Setor: RECEPCAO | Acessórios: CARREGADOR | Obs: 350784348503314/352189678503314"
+  },
+  {
+    "id": 44,
+    "equipmentId": "EQ10049",
+    "name": "NB DELL",
+    "category": "notebook",
+    "model": "VOSTRO3520",
+    "serialNumber": "3L046V3",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "JEDSON LIMA",
+    "notes": "Setor: DEPARTAMENTO PRODUÇÃO  | Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I7-1255U  / 16GB"
+  },
+  {
+    "id": 45,
+    "equipmentId": "EQ10051",
+    "name": "NB DELL ",
+    "category": "notebook",
+    "model": "P112FN",
+    "serialNumber": "B9HY8X3",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "FERNANDO VIEIRA",
+    "notes": "Setor: PRODUCAO | Acessórios: FONTE ALIMENTACAO | Obs: I7-1165G7  / 16GB"
+  },
+  {
+    "id": 46,
+    "equipmentId": "EQ10052",
+    "name": "NB ACER NITRO 5",
+    "category": "notebook",
+    "model": "NITRO5",
+    "serialNumber": "NHQ9RAL0020412A5589501",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DOUGLAS",
+    "notes": "Setor: T.I | Acessórios: FONTE ALIMENTACAO | Obs: RYZEN 7 3750H/16GB"
+  },
+  {
+    "id": 47,
+    "equipmentId": "EQ10053",
+    "name": "MONITOR LG 23,8",
+    "category": "monitor",
+    "model": "24MK430H-B",
+    "serialNumber": "211AZXC4H258",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DOUGLAS",
+    "notes": "Setor: T.I | Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 48,
+    "equipmentId": "EQ10054",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89423148M",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 49,
+    "equipmentId": "EQ10055",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "P2422HB",
+    "serialNumber": "BR-067NW4-TU800-198-BV0L-A00",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "IBERE",
+    "notes": "Setor: PRODUCAO | Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 50,
+    "equipmentId": "EQ10056",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89423147P",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 51,
+    "equipmentId": "EQ10057",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A02",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "ELCIANE",
+    "notes": "Setor: FISCAL | Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 52,
+    "equipmentId": "EQ10058",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89423141V",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 53,
+    "equipmentId": "EQ10059",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A01",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "ANDREINA",
+    "notes": "Setor: PRODUCAO | Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 54,
+    "equipmentId": "EQ10060",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89423139K",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 55,
+    "equipmentId": "EQ10061",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A03",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "PATRICIA",
+    "notes": "Setor: FISCAL | Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 56,
+    "equipmentId": "EQ10062",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89423140G",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 57,
+    "equipmentId": "EQ10063",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A04",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "RENATA",
+    "notes": "Setor: COMERCIAL | Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 58,
+    "equipmentId": "EQ10064",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420711J",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 59,
+    "equipmentId": "EQ10065",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A05",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "LARISSA",
+    "notes": "Setor: MARKETING | Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 60,
+    "equipmentId": "EQ10066",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420708S",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 61,
+    "equipmentId": "EQ10067",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A06",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "LUCAS",
+    "notes": "Setor: FISCAL | Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 62,
+    "equipmentId": "EQ10068",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420710R",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 63,
+    "equipmentId": "EQ10069",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A07",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "LUCILA",
+    "notes": "Setor: FISCAL | Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 64,
+    "equipmentId": "EQ10070",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420709P",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 65,
+    "equipmentId": "EQ10071",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A08",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "CLEIDIANARA",
+    "notes": "Setor: FISCAL | Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 66,
+    "equipmentId": "EQ10072",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420712K",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 67,
+    "equipmentId": "EQ10073",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A09",
+    "status": "assigned",
+    "location": "Faz. NSA",
+    "assignedTo": "MARCIELLI",
+    "notes": "Setor: ADMINSTRATIVO | Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 68,
+    "equipmentId": "EQ10074",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420713L",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 69,
+    "equipmentId": "EQ10075",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A10",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "GENIFER",
+    "notes": "Setor: FINANCEIRO | Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 70,
+    "equipmentId": "EQ10076",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420715M",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 71,
+    "equipmentId": "EQ10077",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A11",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "ISABELE",
+    "notes": "Setor: FINANCEIRO | Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 72,
+    "equipmentId": "EQ10078",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420716N",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 73,
+    "equipmentId": "EQ10079",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A12",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 74,
+    "equipmentId": "EQ10080",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420717O",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 75,
+    "equipmentId": "EQ10081",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A13",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 76,
+    "equipmentId": "EQ10082",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420718X",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 77,
+    "equipmentId": "EQ10083",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A14",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 78,
+    "equipmentId": "EQ10084",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420719Y",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 79,
+    "equipmentId": "EQ10085",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A15",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 80,
+    "equipmentId": "EQ10086",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420720Z",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 81,
+    "equipmentId": "EQ10087",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A16",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 82,
+    "equipmentId": "EQ10088",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420721A",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 83,
+    "equipmentId": "EQ10089",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A17",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 84,
+    "equipmentId": "EQ10090",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420722B",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 85,
+    "equipmentId": "EQ10091",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A18",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 86,
+    "equipmentId": "EQ10092",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420723C",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 87,
+    "equipmentId": "EQ10093",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A19",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 88,
+    "equipmentId": "EQ10094",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420724D",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 89,
+    "equipmentId": "EQ10095",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A20",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 90,
+    "equipmentId": "EQ10096",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420725E",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 91,
+    "equipmentId": "EQ10097",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A21",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 92,
+    "equipmentId": "EQ10098",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420726F",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 93,
+    "equipmentId": "EQ10099",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A22",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 94,
+    "equipmentId": "EQ10100",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420727G",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 95,
+    "equipmentId": "EQ10101",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A23",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 96,
+    "equipmentId": "EQ10102",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420728H",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 97,
+    "equipmentId": "EQ10103",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A24",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 98,
+    "equipmentId": "EQ10104",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420729I",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 99,
+    "equipmentId": "EQ10105",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A25",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 100,
+    "equipmentId": "EQ10106",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420730J",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 101,
+    "equipmentId": "EQ10107",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A26",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 102,
+    "equipmentId": "EQ10108",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420731K",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 103,
+    "equipmentId": "EQ10109",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A27",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 104,
+    "equipmentId": "EQ10110",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420732L",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 105,
+    "equipmentId": "EQ10111",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A28",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 106,
+    "equipmentId": "EQ10112",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420733M",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 107,
+    "equipmentId": "EQ10113",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A29",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 108,
+    "equipmentId": "EQ10114",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420734N",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 109,
+    "equipmentId": "EQ10115",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A30",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 110,
+    "equipmentId": "EQ10116",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420735O",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 111,
+    "equipmentId": "EQ10117",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A31",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 112,
+    "equipmentId": "EQ10118",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420736P",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 113,
+    "equipmentId": "EQ10119",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A32",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 114,
+    "equipmentId": "EQ10120",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420737Q",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 115,
+    "equipmentId": "EQ10121",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A33",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 116,
+    "equipmentId": "EQ10122",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420738R",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 117,
+    "equipmentId": "EQ10123",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A34",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 118,
+    "equipmentId": "EQ10124",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420739S",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 119,
+    "equipmentId": "EQ10125",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A35",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 120,
+    "equipmentId": "EQ10126",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420740T",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 121,
+    "equipmentId": "EQ10127",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A36",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 122,
+    "equipmentId": "EQ10128",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420741U",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  },
+  {
+    "id": 123,
+    "equipmentId": "EQ10129",
+    "name": "MONITOR DELL 23,8",
+    "category": "monitor",
+    "model": "SE2222H",
+    "serialNumber": "BR-0RK34N-TUB00-28H-SN31-A37",
+    "status": "assigned",
+    "location": "Matriz",
+    "assignedTo": "DISPONIVEL",
+    "notes": "Acessórios: FONTE ALIMENTACAO"
+  },
+  {
+    "id": 124,
+    "equipmentId": "EQ10130",
+    "name": "NB VAIO ",
+    "category": "notebook",
+    "model": "FE14",
+    "serialNumber": "89420742V",
+    "status": "available",
+    "location": "Matriz",
+    "assignedTo": null,
+    "notes": "Acessórios: FONTE ALIMENTACAO TECLADO E MOUSE SEM FIO | Obs: I5-10210U/8GB"
+  }
+];
+            
+            movements = [
+                {
+                    id: 1,
+                    equipmentId: 1,
+                    type: 'assignment',
+                    from: 'Almoxarifado',
+                    to: 'João Silva',
+                    responsible: 'Admin',
+                    notes: 'Home office',
+                    date: new Date(Date.now() - 2 * 60 * 60 * 1000)
+                },
+                {
+                    id: 2,
+                    equipmentId: 3,
+                    type: 'maintenance',
+                    from: 'Escritório',
+                    to: 'Técnica',
+                    responsible: 'TI Support',
+                    notes: 'Problema na fonte',
+                    date: new Date(Date.now() - 4 * 60 * 60 * 1000)
+                }
+            ];
+        }
+        
+        // Dashboard functions
+        function updateDashboard() {
+            const stats = {
+                total: equipment.length,
+                available: equipment.filter(e => e.status === 'available').length,
+                assigned: equipment.filter(e => e.status === 'assigned').length,
+                maintenance: equipment.filter(e => e.status === 'maintenance').length,
+                retired: equipment.filter(e => e.status === 'retired').length
+            };
+            
+            document.getElementById('totalEquipment').textContent = stats.total;
+            document.getElementById('availableEquipment').textContent = stats.available;
+            document.getElementById('assignedEquipment').textContent = stats.assigned;
+            document.getElementById('maintenanceEquipment').textContent = stats.maintenance;
+            
+            // Update status chart
+            const statusCtx = document.getElementById('statusChart').getContext('2d');
+            new Chart(statusCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Disponível', 'Atribuído', 'Manutenção', 'Aposentado'],
+                    datasets: [{
+                        data: [stats.available, stats.assigned, stats.maintenance, stats.retired],
+                        backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+            
+            // Update category chart
+            const categoryCount = {};
+            equipment.forEach(e => {
+                categoryCount[e.category] = (categoryCount[e.category] || 0) + 1;
+            });
+            
+            const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+            new Chart(categoryCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(categoryCount),
+                    datasets: [{
+                        label: 'Quantidade',
+                        data: Object.values(categoryCount),
+                        backgroundColor: '#3b82f6'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Equipment functions
+        function renderEquipmentTable() {
+            const tbody = document.getElementById('equipmentTableBody');
+            tbody.innerHTML = '';
+            
+            const filteredEquipment = getFilteredEquipment();
+            
+            filteredEquipment.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.equipmentId}</td>
+                    <td>
+                        <div style="display: flex; align-items: center;">
+                            <i class="fas fa-${getCategoryIcon(item.category)}" style="margin-right: 8px; color: #3b82f6;"></i>
+                            <div>
+                                <div style="font-weight: 500;">${item.name}</div>
+                                <div style="font-size: 12px; color: #6b7280;">${getCategoryName(item.category)}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>${item.model}</td>
+                    <td>${item.serialNumber}</td>
+                    <td><span class="status-badge status-${item.status}">${getStatusText(item.status)}</span></td>
+                    <td>${item.location}</td>
+                    <td>${item.assignedTo || '-'}</td>
+                    <td>
+                        <button class="btn btn-primary" style="margin-right: 4px; padding: 4px 8px;" onclick="editEquipment(${item.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-secondary" style="margin-right: 4px; padding: 4px 8px;" onclick="moveEquipment(${item.id})">
+                            <i class="fas fa-exchange-alt"></i>
+                        </button>
+                        <button class="btn btn-danger" style="padding: 4px 8px;" onclick="deleteEquipment(${item.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        function getFilteredEquipment() {
+            const categoryFilter = document.getElementById('categoryFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+            const locationFilter = document.getElementById('locationFilter').value;
+            const searchFilter = document.getElementById('searchFilter').value.toLowerCase();
+            
+            return equipment.filter(item => {
+                const matchesCategory = !categoryFilter || item.category === categoryFilter;
+                const matchesStatus = !statusFilter || item.status === statusFilter;
+                const matchesLocation = !locationFilter || item.location === locationFilter;
+                const matchesSearch = !searchFilter || 
+                    item.equipmentId.toLowerCase().includes(searchFilter) ||
+                    item.name.toLowerCase().includes(searchFilter) ||
+                    item.serialNumber.toLowerCase().includes(searchFilter);
+                
+                return matchesCategory && matchesStatus && matchesLocation && matchesSearch;
+            });
+        }
+        
+        function filterEquipment() {
+            renderEquipmentTable();
+        }
+        
+        function getCategoryIcon(category) {
+            switch (category) {
+                case 'notebook': return 'laptop';
+                case 'desktop': return 'desktop';
+                case 'monitor': return 'tv';
+                case 'mobile': return 'mobile-alt';
+                case 'printer': return 'print';
+                default: return 'desktop';
+            }
+        }
+        
+        function getCategoryName(category) {
+            switch (category) {
+                case 'notebook': return 'Notebook';
+                case 'desktop': return 'Desktop';
+                case 'monitor': return 'Monitor';
+                case 'mobile': return 'Celular';
+                case 'printer': return 'Impressora';
+                case 'other': return 'Outros';
+                default: return category;
+            }
+        }
+        
+        function getStatusText(status) {
+            switch (status) {
+                case 'available': return 'Disponível';
+                case 'assigned': return 'Atribuído';
+                case 'maintenance': return 'Manutenção';
+                case 'retired': return 'Aposentado';
+                default: return status;
+            }
+        }
+        
+        function editEquipment(id) {
+            const item = equipment.find(e => e.id === id);
+            if (item) {
+                editingEquipment = item;
+                document.getElementById('equipmentId').value = item.equipmentId;
+                document.getElementById('equipmentName').value = item.name;
+                document.getElementById('equipmentCategory').value = item.category;
+                document.getElementById('equipmentModel').value = item.model;
+                document.getElementById('equipmentSerial').value = item.serialNumber;
+                document.getElementById('equipmentStatus').value = item.status;
+                document.getElementById('equipmentLocation').value = item.location;
+                document.getElementById('equipmentAssigned').value = item.assignedTo || '';
+                document.getElementById('equipmentNotes').value = item.notes || '';
+                
+                openModal('equipmentModal');
+            }
+        }
+        
+        function moveEquipment(id) {
+            const item = equipment.find(e => e.id === id);
+            if (item) {
+                document.getElementById('movementEquipment').value = id;
+                document.getElementById('movementFrom').value = item.assignedTo || item.location;
+                openModal('movementModal');
+            }
+        }
+        
+        function deleteEquipment(id) {
+            if (confirm('Tem certeza que deseja excluir este equipamento?')) {
+                equipment = equipment.filter(e => e.id !== id);
+                renderEquipmentTable();
+                updateDashboard();
+                updateMovementEquipmentOptions();
+            }
+        }
+        
+        // Movement functions
+        function renderMovementTable() {
+            const tbody = document.getElementById('movementTableBody');
+            tbody.innerHTML = '';
+            
+            const sortedMovements = movements.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            sortedMovements.forEach(movement => {
+                const item = equipment.find(e => e.id === movement.equipmentId);
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${movement.date.toLocaleDateString('pt-BR')} ${movement.date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</td>
+                    <td>
+                        <div style="display: flex; align-items: center;">
+                            <i class="fas fa-${getCategoryIcon(item?.category || 'desktop')}" style="margin-right: 8px; color: #3b82f6;"></i>
+                            <div>
+                                <div style="font-weight: 500;">${item?.name || 'Equipamento não encontrado'}</div>
+                                <div style="font-size: 12px; color: #6b7280;">${item?.equipmentId || `ID: ${movement.equipmentId}`}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span class="status-badge status-${movement.type}">${getMovementTypeText(movement.type)}</span></td>
+                    <td>${movement.from}</td>
+                    <td>${movement.to}</td>
+                    <td>${movement.responsible}</td>
+                    <td>${movement.notes || '-'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        function getMovementTypeText(type) {
+            switch (type) {
+                case 'assignment': return 'Atribuição';
+                case 'transfer': return 'Transferência';
+                case 'maintenance': return 'Manutenção';
+                case 'return': return 'Devolução';
+                case 'retirement': return 'Baixa';
+                default: return type;
+            }
+        }
+        
+        function updateMovementEquipmentOptions() {
+            const select = document.getElementById('movementEquipment');
+            select.innerHTML = '<option value="">Selecione um equipamento</option>';
+            
+            equipment.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.textContent = `${item.equipmentId} - ${item.name}`;
+                select.appendChild(option);
+            });
+        }
+        
+        // Modal functions
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+        
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+            if (modalId === 'equipmentModal') {
+                editingEquipment = null;
+                document.getElementById('equipmentForm').reset();
+            }
+            if (modalId === 'movementModal') {
+                document.getElementById('movementForm').reset();
+            }
+        }
+        
+        // Form submissions
+        document.getElementById('equipmentForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                equipmentId: document.getElementById('equipmentId').value,
+                name: document.getElementById('equipmentName').value,
+                category: document.getElementById('equipmentCategory').value,
+                model: document.getElementById('equipmentModel').value,
+                serialNumber: document.getElementById('equipmentSerial').value,
+                status: document.getElementById('equipmentStatus').value,
+                location: document.getElementById('equipmentLocation').value,
+                assignedTo: document.getElementById('equipmentAssigned').value || null,
+                notes: document.getElementById('equipmentNotes').value || null
+            };
+            
+            if (editingEquipment) {
+                // Update existing equipment
+                const index = equipment.findIndex(e => e.id === editingEquipment.id);
+                equipment[index] = { ...editingEquipment, ...formData };
+            } else {
+                // Add new equipment
+                const newEquipment = {
+                    id: Date.now(),
+                    ...formData
+                };
+                equipment.push(newEquipment);
+            }
+            
+            renderEquipmentTable();
+            updateDashboard();
+            updateMovementEquipmentOptions();
+            closeModal('equipmentModal');
+        });
+        
+        document.getElementById('movementForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const equipmentId = parseInt(document.getElementById('movementEquipment').value);
+            const movementType = document.getElementById('movementType').value;
+            const from = document.getElementById('movementFrom').value;
+            const to = document.getElementById('movementTo').value;
+            const responsible = document.getElementById('movementResponsible').value;
+            const notes = document.getElementById('movementNotes').value;
+            
+            // Add new movement
+            const newMovement = {
+                id: Date.now(),
+                equipmentId: equipmentId,
+                type: movementType,
+                from: from,
+                to: to,
+                responsible: responsible,
+                notes: notes || null,
+                date: new Date()
+            };
+            
+            movements.push(newMovement);
+            
+            // Update equipment status based on movement type
+            const equipmentItem = equipment.find(e => e.id === equipmentId);
+            if (equipmentItem) {
+                switch (movementType) {
+                    case 'assignment':
+                        equipmentItem.status = 'assigned';
+                        equipmentItem.assignedTo = to;
+                        break;
+                    case 'maintenance':
+                        equipmentItem.status = 'maintenance';
+                        equipmentItem.location = to;
+                        equipmentItem.assignedTo = null;
+                        break;
+                    case 'return':
+                        equipmentItem.status = 'available';
+                        equipmentItem.location = to;
+                        equipmentItem.assignedTo = null;
+                        break;
+                    case 'transfer':
+                        equipmentItem.location = to;
+                        break;
+                    case 'retirement':
+                        equipmentItem.status = 'retired';
+                        equipmentItem.location = to;
+                        equipmentItem.assignedTo = null;
+                        break;
+                }
+            }
+            
+            renderMovementTable();
+            renderEquipmentTable();
+            updateDashboard();
+            closeModal('movementModal');
+        });
+        
+        // File import functions
+        function handleDragOver(e) {
+            e.preventDefault();
+            document.getElementById('dropzone').classList.add('dragover');
+        }
+        
+        function handleDragLeave(e) {
+            e.preventDefault();
+            document.getElementById('dropzone').classList.remove('dragover');
+        }
+        
+        function handleDrop(e) {
+            e.preventDefault();
+            document.getElementById('dropzone').classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        }
+        
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        }
+        
+        function handleFile(file) {
+            if (!file.name.match(/\.(xlsx|xls|csv)$/)) {
+                alert('Por favor, selecione um arquivo Excel (.xlsx, .xls) ou CSV (.csv)');
+                return;
+            }
+            
+            selectedFile = file;
+            
+            // Show file info
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB`;
+            document.getElementById('fileInfo').style.display = 'block';
+            document.getElementById('importBtn').disabled = false;
+        }
+        
+        function importData() {
+            if (!selectedFile) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                
+                processImportedData(jsonData);
+            };
+            
+            reader.readAsArrayBuffer(selectedFile);
+        }
+        
+        function processImportedData(data) {
+            let importedCount = 0;
+            let errorCount = 0;
+            
+            // Process data starting from row 3 (skip headers)
+            for (let i = 3; i < data.length; i++) {
+                const row = data[i];
+                
+                // Skip empty rows
+                if (!row || !row["__EMPTY_1"] || !row["__EMPTY_2"]) continue;
+                
+                try {
+                    const equipmentData = {
+                        id: Date.now() + Math.random(),
+                        equipmentId: `EQ${String(row["__EMPTY_1"]).padStart(3, '0')}`,
+                        name: row["__EMPTY_2"] || "Equipamento sem nome",
+                        category: determineCategory(row["__EMPTY_2"] || ""),
+                        model: row["__EMPTY_4"] || "Modelo não informado",
+                        serialNumber: row["__EMPTY_3"] || "S/N",
+                        status: row["__EMPTY_5"] ? "assigned" : "available",
+                        location: row["Hoje"] || "Local não informado",
+                        assignedTo: row["__EMPTY_5"] || null,
+                        notes: [
+                            row["__EMPTY_6"] ? `Setor: ${row["__EMPTY_6"]}` : null,
+                            row["7/9/25"] ? `Acessórios: ${row["7/9/25"]}` : null,
+                            row["__EMPTY_7"] ? `Obs: ${row["__EMPTY_7"]}` : null
+                        ].filter(Boolean).join(" | ") || null
+                    };
+                    
+                    equipment.push(equipmentData);
+                    importedCount++;
+                } catch (error) {
+                    errorCount++;
+                    console.error('Error processing row:', i, error);
+                }
+            }
+            
+            alert(`Importação concluída!\n${importedCount} equipamentos importados\n${errorCount} erros encontrados`);
+            
+            // Update UI
+            renderEquipmentTable();
+            updateDashboard();
+            updateMovementEquipmentOptions();
+            
+            // Reset file input
+            selectedFile = null;
+            document.getElementById('fileInfo').style.display = 'none';
+            document.getElementById('importBtn').disabled = true;
+            document.getElementById('fileInput').value = '';
+        }
+        
+        function determineCategory(description) {
+            const desc = description.toLowerCase();
+            if (desc.includes('nb') || desc.includes('notebook') || desc.includes('vaio') || desc.includes('laptop')) {
+                return 'notebook';
+            } else if (desc.includes('monitor')) {
+                return 'monitor';
+            } else if (desc.includes('desktop') || desc.includes('pc') || desc.includes('dell') || desc.includes('all in one') || desc.includes('mini pc')) {
+                return 'desktop';
+            } else if (desc.includes('celular') || desc.includes('phone') || desc.includes('motorola') || desc.includes('samsung')) {
+                return 'mobile';
+            } else if (desc.includes('impressora') || desc.includes('printer')) {
+                return 'printer';
+            } else {
+                return 'other';
+            }
+        }
+        
+        // Report functions
+        function generateReport(type) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Header
+            doc.setFontSize(20);
+            doc.text('Controle de Ativos TI', 20, 20);
+            doc.setFontSize(16);
+            doc.text(`Relatório: ${getReportTitle(type)}`, 20, 30);
+            doc.setFontSize(12);
+            doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 20, 40);
+            
+            let yPosition = 60;
+            
+            if (type === 'general') {
+                // Equipment statistics
+                const stats = {
+                    total: equipment.length,
+                    available: equipment.filter(e => e.status === 'available').length,
+                    assigned: equipment.filter(e => e.status === 'assigned').length,
+                    maintenance: equipment.filter(e => e.status === 'maintenance').length,
+                    retired: equipment.filter(e => e.status === 'retired').length
+                };
+                
+                doc.text('Estatísticas Gerais:', 20, yPosition);
+                yPosition += 10;
+                doc.text(`Total de Equipamentos: ${stats.total}`, 30, yPosition);
+                yPosition += 8;
+                doc.text(`Disponíveis: ${stats.available}`, 30, yPosition);
+                yPosition += 8;
+                doc.text(`Em Uso: ${stats.assigned}`, 30, yPosition);
+                yPosition += 8;
+                doc.text(`Manutenção: ${stats.maintenance}`, 30, yPosition);
+                yPosition += 8;
+                doc.text(`Aposentados: ${stats.retired}`, 30, yPosition);
+                yPosition += 20;
+                
+                // Equipment list
+                doc.text('Lista de Equipamentos:', 20, yPosition);
+                yPosition += 10;
+                
+                equipment.forEach(item => {
+                    if (yPosition > 270) {
+                        doc.addPage();
+                        yPosition = 20;
+                    }
+                    
+                    doc.text(`${item.equipmentId} - ${item.name} (${getStatusText(item.status)})`, 30, yPosition);
+                    yPosition += 8;
+                });
+            } else if (type === 'status') {
+                // Status distribution
+                const statusCount = {};
+                equipment.forEach(e => {
+                    statusCount[e.status] = (statusCount[e.status] || 0) + 1;
+                });
+                
+                doc.text('Distribuição por Status:', 20, yPosition);
+                yPosition += 10;
+                
+                Object.entries(statusCount).forEach(([status, count]) => {
+                    doc.text(`${getStatusText(status)}: ${count}`, 30, yPosition);
+                    yPosition += 8;
+                });
+            } else if (type === 'movements') {
+                // Movement history
+                doc.text('Histórico de Movimentações:', 20, yPosition);
+                yPosition += 10;
+                
+                movements.forEach(movement => {
+                    if (yPosition > 270) {
+                        doc.addPage();
+                        yPosition = 20;
+                    }
+                    
+                    const equipmentItem = equipment.find(e => e.id === movement.equipmentId);
+                    doc.text(`${movement.date.toLocaleDateString('pt-BR')} - ${equipmentItem?.name || 'N/A'}`, 30, yPosition);
+                    yPosition += 6;
+                    doc.text(`${getMovementTypeText(movement.type)}: ${movement.from} → ${movement.to}`, 35, yPosition);
+                    yPosition += 6;
+                    doc.text(`Responsável: ${movement.responsible}`, 35, yPosition);
+                    yPosition += 10;
+                });
+            }
+            
+            doc.save(`relatorio_${type}_${new Date().toISOString().split('T')[0]}.pdf`);
+        }
+        
+        function getReportTitle(type) {
+            switch (type) {
+                case 'general': return 'Relatório Geral';
+                case 'status': return 'Equipamentos por Status';
+                case 'movements': return 'Histórico de Movimentações';
+                default: return 'Relatório';
+            }
+        }
+        
+        // Close modal when clicking outside
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('active');
+            }
+        });
+    </script>
+</body>
+</html>
